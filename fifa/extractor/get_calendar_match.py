@@ -123,6 +123,7 @@ def get_calendar_matches(url_params,output_folder):
 
             # Output file name
             output_file_name = os.path.join(match_date_folder,result['IdMatch']+'.json')
+            print(output_file_name)
             # Write match info to file
             with open(output_file_name, "w") as outfile:
                 
@@ -137,8 +138,7 @@ def get_calendar_matches(url_params,output_folder):
     
     except Exception as e: 
         print(e)
-        
-
+      
 
 if __name__ == "__main__":
 
@@ -147,10 +147,10 @@ if __name__ == "__main__":
     base_dir = Path(current_dirname).parents[0]
 
     output_folder = os.path.join(base_dir,'data')
-    # output_folder = os.path.join(output_folder,str_date_process)
+
 
     base_date_diff = 0
-    number_of_days_to_process = 33895
+    number_of_days_to_process = 3
     base = datetime.datetime.today()- datetime.timedelta(days=base_date_diff)
     date_list = [base - datetime.timedelta(days=x) for x in range(number_of_days_to_process)]
 
@@ -162,8 +162,8 @@ if __name__ == "__main__":
         str_previous_date = previous_date.strftime('%Y-%m-%dT00:00:00Z')
         pass
         
-        from_date = '2022-10-16T00:00:00Z'
-        to_date = '2022-10-17T00:00:00Z'
+        # from_date = '2022-10-16T00:00:00Z'
+        # to_date = '2022-10-17T00:00:00Z'
 
         from_date = str_previous_date
         to_date = str_current_date
