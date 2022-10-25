@@ -2,3 +2,4 @@ wheel
 requests
 pandas
 bs4
+sqlite3
