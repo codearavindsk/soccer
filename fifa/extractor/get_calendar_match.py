@@ -63,33 +63,6 @@ def get_match_detail_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_dat
     
     get_teaminfo_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_folder)
 
-
-'''
-Get detailed timeline of events in a match
-'''
-def get_timeline_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_folder):
-    # https://api.fifa.com/api/v3/timelines/<IdCompetition>/<IdSeason>/<IdStage>/<IdMatch>?language=en
-    url_match = 'https://api.fifa.com/api/v3/timelines/'+IdCompetition+'/'+IdSeason+'/'+IdStage+'/'+IdMatch+'?language=en'
-    print(url_match)
-    response_json = requests.get(url_match).json()
-
-    pass
-
-    timeline_date_folder = os.path.join(output_date_folder,'timeline')
-    # Create directory if not exists: Suffix directory name
-    mkdirpath = timeline_date_folder+'/'
-    os.makedirs(mkdirpath, exist_ok=True)
-
-    # Output file name
-    output_file_name = os.path.join(timeline_date_folder,IdMatch+'.json')
-    # Write match info to file
-    with open(output_file_name, "w") as outfile:
-        print(output_file_name)
-        
-        json.dump(response_json, outfile)
-    get_match_detail_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_folder)
-
-
 '''
 Get details of matches based on URL parameters
 '''
@@ -132,13 +105,7 @@ def get_calendar_matches(url_params,output_folder):
             with open(output_file_name, "w") as outfile:
                 
                 json.dump(result, outfile)
-            
-            # Process timeline info for match
-            IdCompetition = result['IdCompetition']
-            IdSeason = result['IdSeason']
-            IdStage = result['IdStage']
-            IdMatch = result['IdMatch']
-            # get_timeline_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_folder)
+
     
     except Exception as e: 
         print(e)
@@ -146,27 +113,32 @@ def get_calendar_matches(url_params,output_folder):
 Insert match list to sqlite db
 '''
 def db_insert_list_to_table(list_match_info,db_file_path):
-    try:
-        sqliteConnection = sqlite3.connect(db_file_path)
-        cursor = sqliteConnection.cursor()
-        print("Connected to SQLite")
 
-        sqlite_insert_query = """INSERT INTO fifa_matches_log
-                          (match_date, IdCompetition, IdSeason, IdStage, IdGroup,IdMatch,process_match,ts_process_match) 
-                          VALUES (?, ?, ?, ?, ?, ?, ?, ?);"""
+    # Loop thru list and insert each item
+    # Fix for unique constraint fail for bulk insert
+    for list_e in list_match_info:
+        try:
+            sqliteConnection = sqlite3.connect(db_file_path)
+            cursor = sqliteConnection.cursor()
+            print("Connected to SQLite")
 
-        cursor.executemany(sqlite_insert_query, list_match_info)
-        sqliteConnection.commit()
-        print("Total", cursor.rowcount, "Records inserted successfully into fifa_matches_log table")
-        sqliteConnection.commit()
-        cursor.close()
+            sqlite_insert_query = """INSERT INTO fifa_matches_log
+                            (match_date, IdCompetition, IdSeason, IdStage, IdGroup,IdMatch,process_match,ts_process_match) 
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?);"""
 
-    except sqlite3.Error as error:
-        print("Failed to insert multiple records into sqlite table", error)
-    finally:
-        if sqliteConnection:
-            sqliteConnection.close()
-            print("The SQLite connection is closed")
+            cursor.execute(sqlite_insert_query, list_e)
+            sqliteConnection.commit()
+            print("Total", cursor.rowcount, "Records inserted successfully into fifa_matches_log table")
+            print(list_e[5])
+            sqliteConnection.commit()
+            cursor.close()
+
+        except sqlite3.Error as error:
+            print("Failed to insert multiple records into sqlite table", error)
+        finally:
+            if sqliteConnection:
+                sqliteConnection.close()
+                print("The SQLite connection is closed")
 
 '''
 Insert into matches table the list of matches for a particular day
@@ -180,13 +152,15 @@ def db_insert_match_for_day(process_date,output_folder,db_file_path):
     for match_file in glob(dir_match_files+'/*.json'):
         with open(match_file) as f:
             match_data = json.load(f)
+            # Replace None values in JSON with string. None is stored as NULL in DB, and would not satisfy unique constraint
+            cleansed_match_data =  {key: 'None' if value is None else value for (key, value) in match_data.items()}
 
-            match_info = (  match_data['Date'][0:-1],
-                            match_data['IdCompetition'],
-                            match_data['IdSeason'],
-                            match_data['IdStage'],
-                            match_data['IdGroup'],
-                            match_data['IdMatch'],
+            match_info = (  cleansed_match_data['Date'][0:-1],
+                            cleansed_match_data['IdCompetition'],
+                            cleansed_match_data['IdSeason'],
+                            cleansed_match_data['IdStage'],
+                            cleansed_match_data['IdGroup'],
+                            cleansed_match_data['IdMatch'],
                             'Y',
                             datetime.datetime.now(timezone.utc).strftime(r"%Y-%m-%dT%H:%M:%S")
             )
@@ -237,8 +211,8 @@ if __name__ == "__main__":
     output_folder = os.path.join(base_dir,'data')
 
 
-    base_date_diff = 0
-    number_of_days_to_process = 5
+    base_date_diff = -1
+    number_of_days_to_process = 2
     base = datetime.datetime.today()- datetime.timedelta(days=base_date_diff)
     date_list = [base - datetime.timedelta(days=x) for x in range(number_of_days_to_process)]
 
@@ -248,11 +222,7 @@ if __name__ == "__main__":
 
         str_current_date = current_date.strftime('%Y-%m-%dT00:00:00Z')
         str_previous_date = previous_date.strftime('%Y-%m-%dT00:00:00Z')
-        pass
-        
-        # from_date = '2022-10-16T00:00:00Z'
-        # to_date = '2022-10-17T00:00:00Z'
-
+        # Set up parameters for API call
         from_date = str_previous_date
         to_date = str_current_date
 
