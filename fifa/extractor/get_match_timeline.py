@@ -19,7 +19,7 @@ Get detailed timeline of events in a match
 def get_timeline_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_folder):
     # https://api.fifa.com/api/v3/timelines/<IdCompetition>/<IdSeason>/<IdStage>/<IdMatch>?language=en
     url_match = 'https://api.fifa.com/api/v3/timelines/'+IdCompetition+'/'+IdSeason+'/'+IdStage+'/'+IdMatch+'?language=en'
-    # print(url_match)
+    print(url_match)
     response_json = requests.get(url_match).json()
 
     timeline_date_folder = os.path.join(output_date_folder,'timeline')
@@ -46,7 +46,8 @@ def db_update_timeline_flag(list_match_info,db_file_path):
 
         sqlite_update_query = """UPDATE fifa_matches_log
                                     SET process_timeline = ?,
-                                    ts_process_timeline = ?
+                                    ts_process_timeline = ?,
+                                    count_process_timeline = count_process_timeline + 1
                                     WHERE  
                                     IdCompetition = ?
                                     AND IdSeason = ? 
@@ -68,8 +69,9 @@ def db_update_timeline_flag(list_match_info,db_file_path):
             print("The SQLite connection is closed")
 
 '''
-Insert into matches table the list of matches for a particular day
-Match information files are opened and data inserted into DB
+Set up data for timeline status updates
+Generated JSON files are opened and status is evaluated
+List of matches and timeline status is created and passed to db update function
 '''
 def db_update_timeline_status_for_day(process_date,output_folder,db_file_path):
 
@@ -77,6 +79,7 @@ def db_update_timeline_status_for_day(process_date,output_folder,db_file_path):
     
     list_match_info = list()
     for match_file in glob.glob(dir_timeline_files+'/*.json'):
+        print(match_file)
         with open(match_file) as f:
             match_data = json.load(f)
             # set process_timeline 
@@ -111,7 +114,9 @@ def db_get_match_list(db_file_path,match_date):
     #TODO: Need fix for repreocessing events marked as 'Y'
     # Timeline information can be processed while event is on going. Such matches needs timeline reprocessing
     cur.execute("SELECT match_date, IdCompetition, IdSeason ,IdStage , IdMatch FROM fifa_matches_log \
-                    where process_timeline <>'Y' AND date(match_date)= (?)",[str_match_date])
+                    where process_timeline in('N','I') \
+                    and count_process_timeline<=5    \
+                    AND date(match_date)= (?)",[str_match_date])
     match_list = cur.fetchall()
     cur.close()
     return match_list
@@ -135,7 +140,7 @@ if __name__ == "__main__":
     
     # Define date ranges for processing
     base_date_diff = -1
-    number_of_days_to_process = 2
+    number_of_days_to_process = 3
     base = datetime.datetime.today()- datetime.timedelta(days=base_date_diff)
     date_list = [base - datetime.timedelta(days=x) for x in range(number_of_days_to_process)]
 

@@ -1,6 +1,7 @@
 '''
 Extract list of matches from the calendar
 Inputs include 'from' and 'to' dates. Alsoinclude the count of records to be pulled
+https://www.fifa.com/fifaplus/en/match-centre?date=YYYY-MM-DD
 '''
 import requests
 import os
@@ -105,6 +106,7 @@ def get_calendar_matches(url_params,output_folder):
             with open(output_file_name, "w") as outfile:
                 
                 json.dump(result, outfile)
+                # json.dump(json.dumps(result, indent = 1), outfile)
 
     
     except Exception as e: 
@@ -189,7 +191,9 @@ def db_setup():
                         IdMatch TEXT NOT NULL,\
                         process_match CHARACTER(1) DEFAULT 'N' NOT NULL,\
                         process_timeline CHARACTER(1) DEFAULT 'N' NOT NULL,\
+                        count_process_timeline INTEGER DEFAULT 0 NOT NULL,\
                         process_match_end_info CHARACTER(1) DEFAULT 'N' NOT NULL,\
+                        count_process_match_end_info INTEGER DEFAULT 0 NOT NULL,\
                         ts_process_match DATETIME,\
                         ts_process_timeline DATETIME,\
                         ts_process_match_end_info DATETIME,\
