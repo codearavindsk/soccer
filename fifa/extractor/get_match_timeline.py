@@ -9,8 +9,6 @@ import json
 import sqlite3
 import datetime
 from datetime import timezone
-import glob
-import re
 from time import sleep
 
 '''
@@ -33,6 +31,25 @@ def get_timeline_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_fo
     with open(output_file_name, "w") as outfile:
         # print(output_file_name)
         json.dump(response_json, outfile)
+    
+    # Update timeline metadata in db
+    timeline_info_present = 'I' if not response_json['Event'] else 'Y'
+
+    match_info = (  timeline_info_present,
+                            datetime.datetime.now(timezone.utc).strftime(r"%Y-%m-%dT%H:%M:%S"),
+                            response_json['IdCompetition'],
+                            response_json['IdSeason'],
+                            response_json['IdStage'],
+                            # match_data['IdGroup'],
+                            response_json['IdMatch'],
+                            
+                            
+            )
+    list_match_info = list()
+    list_match_info.append(match_info)
+    # print(process_date)
+    
+    db_update_timeline_flag(list_match_info=list_match_info,db_file_path=db_file_path)
 
 '''
 Update process_timeline flag for list of files that are processed
@@ -69,40 +86,6 @@ def db_update_timeline_flag(list_match_info,db_file_path):
             print("The SQLite connection is closed")
 
 '''
-Set up data for timeline status updates
-Generated JSON files are opened and status is evaluated
-List of matches and timeline status is created and passed to db update function
-'''
-def db_update_timeline_status_for_day(process_date,output_folder,db_file_path):
-
-    dir_timeline_files = os.path.join(output_folder,'timeline')
-    
-    list_match_info = list()
-    for match_file in glob.glob(dir_timeline_files+'/*.json'):
-        print(match_file)
-        with open(match_file) as f:
-            match_data = json.load(f)
-            # set process_timeline 
-            # I, incomplete if Event information not in file
-            # Y, if file has Event information
-            timeline_info_present = 'I' if not match_data['Event'] else 'Y'
-
-            match_info = (  timeline_info_present,
-                            datetime.datetime.now(timezone.utc).strftime(r"%Y-%m-%dT%H:%M:%S"),
-                            match_data['IdCompetition'],
-                            match_data['IdSeason'],
-                            match_data['IdStage'],
-                            # match_data['IdGroup'],
-                            match_data['IdMatch'],
-                            
-                            
-            )
-        list_match_info.append(match_info)
-    print(process_date)
-    
-    db_update_timeline_flag(list_match_info=list_match_info,db_file_path=db_file_path)
-
-'''
 Get list of matches from DB for a match_day
 '''
 def db_get_match_list(db_file_path,match_date):
@@ -111,11 +94,14 @@ def db_get_match_list(db_file_path,match_date):
     str_match_date = match_date.strftime('%Y-%m-%d')
     # str_match_date='2022-10-26'
     print("Connected to SQLite")
-    #TODO: Need fix for repreocessing events marked as 'Y'
-    # Timeline information can be processed while event is on going. Such matches needs timeline reprocessing
+    
+    # All events will be reprocessed 5 times
+    # Event processing will start only 2 hours(7200 secs) after the match has started
+
     cur.execute("SELECT match_date, IdCompetition, IdSeason ,IdStage , IdMatch FROM fifa_matches_log \
-                    where process_timeline in('N','I') \
+                    where process_timeline in('Y','I','N') \
                     and count_process_timeline<=5    \
+                    and strftime('%s')-CAST(strftime('%s', replace(match_date,'T',' ')) as integer)>7200 \
                     AND date(match_date)= (?)",[str_match_date])
     match_list = cur.fetchall()
     cur.close()
@@ -140,7 +126,7 @@ if __name__ == "__main__":
     
     # Define date ranges for processing
     base_date_diff = -1
-    number_of_days_to_process = 3
+    number_of_days_to_process = 5
     base = datetime.datetime.today()- datetime.timedelta(days=base_date_diff)
     date_list = [base - datetime.timedelta(days=x) for x in range(number_of_days_to_process)]
 
@@ -149,15 +135,9 @@ if __name__ == "__main__":
     # For each match, get timeline events from API
         # Get list of matches for the day
         match_list = db_get_match_list(db_file_path,current_date)
+        pass
         for match in match_list:
             str_match_date = match[0][:10].replace('-','_')
             
             match_date_folder = os.path.join(data_folder,str_match_date)
             get_timeline_for_match(match[1],match[2],match[3],match[4],match_date_folder)
-            # Add date to set. 
-            set_str_match_date.add(str_match_date)
-
-    # For every date processed, open processed JSON's and update flag process_timeline in the database
-    for str_match_date in set_str_match_date:  
-        match_date_folder = os.path.join(data_folder,str_match_date)
-        db_update_timeline_status_for_day(str_match_date,match_date_folder,db_file_path)
