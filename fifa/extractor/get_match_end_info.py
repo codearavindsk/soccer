@@ -35,6 +35,28 @@ def get_teaminfo_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_fo
         print(output_file_name)
         
         json.dump(response_json, outfile)
+    
+    # Update DB with match info status
+    # I, incomplete if Event information not in file
+    # Y, if file has Event information
+    # timeline_info_present = 'I' if not match_data['Event'] else 'Y'
+    team_info_present = 'Y'
+
+    match_info = (  team_info_present,
+                    datetime.datetime.now(timezone.utc).strftime(r"%Y-%m-%dT%H:%M:%S"),
+                    response_json['IdCompetition'],
+                    response_json['IdSeason'],
+                    response_json['IdStage'],
+                    # match_data['IdGroup'],
+                    response_json['IdMatch'],
+                    
+                    
+        )
+    list_match_info = list()
+    list_match_info.append(match_info)
+    # print(process_date)
+    
+    db_update_match_end_info_flag(list_match_info=list_match_info,db_file_path=db_file_path)
     # get_match_detail_for_match(IdCompetition,IdSeason,IdMatch,output_date_folder)
 
     # TODO: Build exception handler
@@ -74,44 +96,6 @@ def db_update_match_end_info_flag(list_match_info,db_file_path):
             sqliteConnection.close()
             print("The SQLite connection is closed")
 
-
-'''
-Set up data for teaminfo status updates
-Generated JSON files are opened and status is evaluated
-List of matches and teaminfo status is created and passed to db update function
-'''
-def db_update_match_end_info_for_day(process_date,output_folder,db_file_path):
-
-    dir_timeline_files = os.path.join(output_folder,'teaminfo')
-    
-    list_match_info = list()
-    for match_file in glob.glob(dir_timeline_files+'/*.json'):
-        print(match_file)
-        with open(match_file) as f:
-            match_data = json.load(f)
-            # set process_timeline 
-            # I, incomplete if Event information not in file
-            # Y, if file has Event information
-            # timeline_info_present = 'I' if not match_data['Event'] else 'Y'
-            team_info_present = 'Y'
-
-            match_info = (  team_info_present,
-                            datetime.datetime.now(timezone.utc).strftime(r"%Y-%m-%dT%H:%M:%S"),
-                            match_data['IdCompetition'],
-                            match_data['IdSeason'],
-                            match_data['IdStage'],
-                            # match_data['IdGroup'],
-                            match_data['IdMatch'],
-                            
-                            
-            )
-        list_match_info.append(match_info)
-    print(process_date)
-    
-    db_update_match_end_info_flag(list_match_info=list_match_info,db_file_path=db_file_path)
-
-
-
 '''
 Get list of matches from DB for a match_day
 '''
@@ -124,8 +108,9 @@ def db_get_match_list(db_file_path,match_date):
     #TODO: Need fix for repreocessing events marked as 'Y'
     # Timeline information can be processed while event is on going. Such matches needs timeline reprocessing
     cur.execute("SELECT match_date, IdCompetition, IdSeason ,IdStage , IdMatch FROM fifa_matches_log \
-                    where process_timeline in('N','I') \
+                    where process_timeline in('N','I','Y') \
                     and count_process_match_end_info<=5 \
+                    and strftime('%s')-CAST(strftime('%s', replace(match_date,'T',' ')) as integer)>7200 \
                     AND date(match_date)= (?)",[str_match_date])
     match_list = cur.fetchall()
     cur.close()
@@ -165,10 +150,3 @@ if __name__ == "__main__":
             
             match_date_folder = os.path.join(data_folder,str_match_date)
             get_teaminfo_for_match(match[1],match[2],match[3],match[4],match_date_folder)
-            # Add date to set. 
-            set_str_match_date.add(str_match_date)
-
-    # For every date processed, open processed JSON's and update flag process_timeline in the database
-    for str_match_date in set_str_match_date:  
-        match_date_folder = os.path.join(data_folder,str_match_date)
-        db_update_match_end_info_for_day(str_match_date,match_date_folder,db_file_path)
