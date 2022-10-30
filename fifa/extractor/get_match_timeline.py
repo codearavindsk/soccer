@@ -45,21 +45,20 @@ def get_timeline_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_fo
                             
                             
             )
-    list_match_info = list()
-    list_match_info.append(match_info)
-    # print(process_date)
+    # list_match_info = list()
+    # list_match_info.append(match_info)
+
     
-    db_update_timeline_flag(list_match_info=list_match_info,db_file_path=db_file_path)
+    db_update_timeline_flag(match_info=match_info,db_file_path=db_file_path)
 
 '''
 Update process_timeline flag for list of files that are processed
 '''
-def db_update_timeline_flag(list_match_info,db_file_path):
+def db_update_timeline_flag(match_info,db_file_path):
     try:
         sqliteConnection = sqlite3.connect(db_file_path)
         cursor = sqliteConnection.cursor()
-        print(list_match_info)
-        print("Connected to SQLite")
+        
 
         sqlite_update_query = """UPDATE fifa_matches_log
                                     SET process_timeline = ?,
@@ -72,9 +71,9 @@ def db_update_timeline_flag(list_match_info,db_file_path):
                                     AND IdMatch = ?;
                             """
 
-        cursor.executemany(sqlite_update_query, list_match_info)
+        cursor.execute(sqlite_update_query, match_info)
         sqliteConnection.commit()
-        print("Total", cursor.rowcount, "Records updated successfully into fifa_matches_log table")
+        # print("Total", cursor.rowcount, "Records updated successfully into fifa_matches_log table")
         sqliteConnection.commit()
         cursor.close()
 
@@ -83,7 +82,7 @@ def db_update_timeline_flag(list_match_info,db_file_path):
     finally:
         if sqliteConnection:
             sqliteConnection.close()
-            print("The SQLite connection is closed")
+
 
 '''
 Get list of matches from DB for a match_day
@@ -92,11 +91,11 @@ def db_get_match_list(db_file_path,match_date):
     sqliteConnection = sqlite3.connect(db_file_path)
     cur = sqliteConnection.cursor()
     str_match_date = match_date.strftime('%Y-%m-%d')
-    # str_match_date='2022-10-26'
-    print("Connected to SQLite")
+
+    print("Get match list from DB")
     
     # All events will be reprocessed 5 times
-    # Event processing will start only 2 hours(7200 secs) after the match has started
+    # Events considered: Events that starting at least 2 hours(7200 secs) before script runtime
 
     cur.execute("SELECT match_date, IdCompetition, IdSeason ,IdStage , IdMatch FROM fifa_matches_log \
                     where process_timeline in('Y','I','N') \
@@ -132,10 +131,11 @@ if __name__ == "__main__":
 
 
     for current_date in date_list:
+        print(current_date)
     # For each match, get timeline events from API
         # Get list of matches for the day
         match_list = db_get_match_list(db_file_path,current_date)
-        pass
+
         for match in match_list:
             str_match_date = match[0][:10].replace('-','_')
             

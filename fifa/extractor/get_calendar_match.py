@@ -13,30 +13,6 @@ from datetime import timezone
 import pandas as pd
 from glob import glob
 
-
-'''
-Get team information for the match
-'''
-def get_teaminfo_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_folder):
-    # https://api.fifa.com/api/v3/timelines/<IdCompetition>/<IdSeason>/<IdStage>/<IdMatch>?language=en
-    url_match = 'https://api.fifa.com/api/v3/live/football/'+IdCompetition+'/'+IdSeason+'/'+IdStage+'/'+IdMatch+'?language=en'
-    print(url_match)
-    response_json = requests.get(url_match).json()
-
-    teaminfo_date_folder = os.path.join(output_date_folder,'teaminfo')
-    # Create directory if not exists: Suffix directory name
-    mkdirpath = teaminfo_date_folder+'/'
-    os.makedirs(mkdirpath, exist_ok=True)
-
-    # Output file name
-    output_file_name = os.path.join(teaminfo_date_folder,IdMatch+'.json')
-    # Write match info to file
-    with open(output_file_name, "w") as outfile:
-        print(output_file_name)
-        
-        json.dump(response_json, outfile)
-    # get_match_detail_for_match(IdCompetition,IdSeason,IdMatch,output_date_folder)
-
 '''
 Get match details. Possible overlap with calendar match info.
 Includes match day info such as attendance, weather, team formation, possession, officials
@@ -61,8 +37,6 @@ def get_match_detail_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_dat
         print(output_file_name)
         
         json.dump(response_json, outfile)
-    
-    get_teaminfo_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_folder)
 
 '''
 Get details of matches based on URL parameters
@@ -122,7 +96,6 @@ def db_insert_list_to_table(list_match_info,db_file_path):
         try:
             sqliteConnection = sqlite3.connect(db_file_path)
             cursor = sqliteConnection.cursor()
-            print("Connected to SQLite")
 
             sqlite_insert_query = """INSERT INTO fifa_matches_log
                             (match_date, IdCompetition, IdSeason, IdStage, IdGroup,IdMatch,process_match,ts_process_match) 
@@ -167,7 +140,6 @@ def db_insert_match_for_day(process_date,output_folder,db_file_path):
                             datetime.datetime.now(timezone.utc).strftime(r"%Y-%m-%dT%H:%M:%S")
             )
         list_match_info.append(match_info)
-    print(process_date)
     db_insert_list_to_table(list_match_info=list_match_info,db_file_path=db_file_path)
 
 
@@ -216,7 +188,7 @@ if __name__ == "__main__":
 
 
     base_date_diff = -1
-    number_of_days_to_process = 2
+    number_of_days_to_process = 5
     base = datetime.datetime.today()- datetime.timedelta(days=base_date_diff)
     date_list = [base - datetime.timedelta(days=x) for x in range(number_of_days_to_process)]
 

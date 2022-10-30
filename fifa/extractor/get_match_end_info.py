@@ -20,8 +20,8 @@ Get team information for the match
 def get_teaminfo_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_folder):
     # https://api.fifa.com/api/v3/timelines/<IdCompetition>/<IdSeason>/<IdStage>/<IdMatch>?language=en
     url_match = 'https://api.fifa.com/api/v3/live/football/'+IdCompetition+'/'+IdSeason+'/'+IdStage+'/'+IdMatch+'?language=en'
-    print(url_match)
     response_json = requests.get(url_match).json()
+    # TODO: Handle HTTPSConnectionPool(host='api.fifa.com', port=443): Max retries exceeded with url:
 
     teaminfo_date_folder = os.path.join(output_date_folder,'teaminfo')
     # Create directory if not exists: Suffix directory name
@@ -30,12 +30,15 @@ def get_teaminfo_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_fo
 
     # Output file name
     output_file_name = os.path.join(teaminfo_date_folder,IdMatch+'.json')
+
     # Write match info to file
     with open(output_file_name, "w") as outfile:
-        print(output_file_name)
-        
         json.dump(response_json, outfile)
     
+    # if no response received, exit the function
+    if not response_json:
+        return
+
     # Update DB with match info status
     # I, incomplete if Event information not in file
     # Y, if file has Event information
@@ -54,9 +57,9 @@ def get_teaminfo_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_fo
         )
     list_match_info = list()
     list_match_info.append(match_info)
-    # print(process_date)
     
-    db_update_match_end_info_flag(list_match_info=list_match_info,db_file_path=db_file_path)
+    
+    db_update_match_end_info_flag(match_info=match_info,db_file_path=db_file_path)
     # get_match_detail_for_match(IdCompetition,IdSeason,IdMatch,output_date_folder)
 
     # TODO: Build exception handler
@@ -65,13 +68,11 @@ def get_teaminfo_for_match(IdCompetition,IdSeason,IdStage,IdMatch,output_date_fo
 '''
 Update process_match_end_info flag for list of files that are processed
 '''
-def db_update_match_end_info_flag(list_match_info,db_file_path):
+def db_update_match_end_info_flag(match_info,db_file_path):
     try:
         sqliteConnection = sqlite3.connect(db_file_path)
         cursor = sqliteConnection.cursor()
-        print(list_match_info)
-        print("Connected to SQLite")
-
+        
         sqlite_update_query = """UPDATE fifa_matches_log
                                     SET process_match_end_info = ?,
                                     ts_process_match_end_info = ?,
@@ -83,9 +84,8 @@ def db_update_match_end_info_flag(list_match_info,db_file_path):
                                     AND IdMatch = ?;
                             """
 
-        cursor.executemany(sqlite_update_query, list_match_info)
+        cursor.execute(sqlite_update_query, match_info)
         sqliteConnection.commit()
-        print("Total", cursor.rowcount, "Records updated successfully into fifa_matches_log table")
         sqliteConnection.commit()
         cursor.close()
 
@@ -94,7 +94,6 @@ def db_update_match_end_info_flag(list_match_info,db_file_path):
     finally:
         if sqliteConnection:
             sqliteConnection.close()
-            print("The SQLite connection is closed")
 
 '''
 Get list of matches from DB for a match_day
@@ -103,12 +102,10 @@ def db_get_match_list(db_file_path,match_date):
     sqliteConnection = sqlite3.connect(db_file_path)
     cur = sqliteConnection.cursor()
     str_match_date = match_date.strftime('%Y-%m-%d')
-    # str_match_date='2022-10-26'
-    print("Connected to SQLite")
-    #TODO: Need fix for repreocessing events marked as 'Y'
-    # Timeline information can be processed while event is on going. Such matches needs timeline reprocessing
+
+    # Events that started at least 2 hours(7200 secs) before script run time
     cur.execute("SELECT match_date, IdCompetition, IdSeason ,IdStage , IdMatch FROM fifa_matches_log \
-                    where process_timeline in('N','I','Y') \
+                    where process_match_end_info in('N','I','Y') \
                     and count_process_match_end_info<=5 \
                     and strftime('%s')-CAST(strftime('%s', replace(match_date,'T',' ')) as integer)>7200 \
                     AND date(match_date)= (?)",[str_match_date])
@@ -127,10 +124,6 @@ if __name__ == "__main__":
 
     data_folder = os.path.join(base_dir,'data')
 
-    # list_match_files = glob.glob(data_folder+"/*/match/*.json")
-    # list_match_files.sort(reverse=True)
-
-
     # Initialize set to store list of dates that are processed
     set_str_match_date = set()
     
@@ -142,6 +135,7 @@ if __name__ == "__main__":
 
 
     for current_date in date_list:
+        print(current_date)
 
         # Get list of matches for the day
         match_list = db_get_match_list(db_file_path,current_date)
