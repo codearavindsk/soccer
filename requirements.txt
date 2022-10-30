@@ -3,3 +3,5 @@ requests
 pandas
 bs4
 sqlite3
+psycopg2-binary
+sqlalchemy
