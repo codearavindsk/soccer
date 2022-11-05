@@ -41,6 +41,8 @@ def transform_files_in_directory(input_directory,output_directory,str_granularit
         dfs.append(data) # append the data frame to the list
 
     df = pd.concat(dfs, ignore_index=True) # concatenate all the data frames in the list.
+    print('DF after all files loaded:')
+    print(df.shape)
     
     # Exlcude files that do not have Event information
     df = df[df['Event'].apply(len)>0]
@@ -119,7 +121,7 @@ def transform_files_in_directory(input_directory,output_directory,str_granularit
                 compression='gzip')
 
         processed_file_list.append((curr_filename,curr_filename_fullpath))
-    
+    print('Files created: '+str(len(processed_file_list)))
     return(processed_file_list)
 
 

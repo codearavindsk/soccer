@@ -42,7 +42,8 @@ def transform_files_in_directory(input_directory,output_directory,str_granularit
         dfs.append(data) # append the data frame to the list
 
     df = pd.concat(dfs, ignore_index=True) # concatenate all the data frames in the list.
-    
+    print('DF after all files loaded:')
+    print(df.shape)
 
     in_scope_competitions = [17,2000000000,2000001032]
 
@@ -191,6 +192,7 @@ def transform_files_in_directory(input_directory,output_directory,str_granularit
 
         processed_file_list.append((curr_filename,curr_filename_fullpath))
     
+    print('Files created: '+str(len(processed_file_list)))
     return(processed_file_list)
 
 

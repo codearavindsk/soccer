@@ -43,6 +43,8 @@ def transform_files_in_directory(input_directory,output_directory,str_granularit
         dfs.append(data) # append the data frame to the list
 
     df = pd.concat(dfs, ignore_index=True) # concatenate all the data frames in the list.
+    print('DF after all files loaded:')
+    print(df.shape)
 
     in_scope_competitions = [17,2000000000,2000001032]
 
@@ -111,7 +113,9 @@ def transform_files_in_directory(input_directory,output_directory,str_granularit
     # Build type corrected df
     df_type_corrected = pd.merge(df_non_object_cols, df_object_cols, left_index=True, right_index=True)
 
-
+    print('Final DF before file write:')
+    print(df.shape)
+    
     # Set granularity for output files
     
     match_granular_list = df_type_corrected['matchdate'].dt.strftime(str_granularity_format).unique().tolist()
@@ -132,14 +136,14 @@ def transform_files_in_directory(input_directory,output_directory,str_granularit
                 compression='gzip')
 
         processed_file_list.append((curr_filename,curr_filename_fullpath))
-    
+    print('Files created: '+str(len(processed_file_list)))
     return(processed_file_list)
 
 
 if __name__ == "__main__":
 
     current_dirname = os.path.dirname(__file__)
-    # find one directory above current dirfas
+    # find one directory above current dirs
     base_dir = Path(current_dirname).parents[0]
 
     output_folder = os.path.join(base_dir,'dataNormalized','match')
@@ -147,7 +151,7 @@ if __name__ == "__main__":
 
     str_granularity_format = r"%y_%m"
 
-    pattern_data_select = '2022_*_*'
+    pattern_data_select = '2022_11_*'
     input_folder_pattern = os.path.join(base_dir,'data',pattern_data_select,'match')+'/'
 
     processed_file_list = transform_files_in_directory(input_directory=input_folder_pattern,
