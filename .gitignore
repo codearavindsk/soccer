@@ -168,4 +168,4 @@ venv*/
 internalDocumentation/
 db/
 */dataNormalized/
-*/transformers/
+#*/transformers/
