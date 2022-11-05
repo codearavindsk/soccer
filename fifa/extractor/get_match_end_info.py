@@ -102,12 +102,12 @@ def db_get_match_list(db_file_path,match_date):
     sqliteConnection = sqlite3.connect(db_file_path)
     cur = sqliteConnection.cursor()
     str_match_date = match_date.strftime('%Y-%m-%d')
-
+# and count_process_match_end_info<=5 \
     # Events that started at least 2 hours(7200 secs) before script run time
     cur.execute("SELECT match_date, IdCompetition, IdSeason ,IdStage , IdMatch FROM fifa_matches_log \
                     where process_match_end_info in('N','I','Y') \
-                    and count_process_match_end_info<=5 \
                     and strftime('%s')-CAST(strftime('%s', replace(match_date,'T',' ')) as integer)>7200 \
+                    and IdCompetition in ('2000000000','2000001032','17') \
                     AND date(match_date)= (?)",[str_match_date])
     match_list = cur.fetchall()
     cur.close()
@@ -128,8 +128,9 @@ if __name__ == "__main__":
     set_str_match_date = set()
     
     # Define date ranges for processing
-    base_date_diff = -1
-    number_of_days_to_process = 5
+    # done fof 365 * 2
+    base_date_diff = 0
+    number_of_days_to_process = 7
     base = datetime.datetime.today()- datetime.timedelta(days=base_date_diff)
     date_list = [base - datetime.timedelta(days=x) for x in range(number_of_days_to_process)]
 

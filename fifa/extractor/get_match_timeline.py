@@ -101,6 +101,7 @@ def db_get_match_list(db_file_path,match_date):
                     where process_timeline in('Y','I','N') \
                     and count_process_timeline<=5    \
                     and strftime('%s')-CAST(strftime('%s', replace(match_date,'T',' ')) as integer)>7200 \
+                    and IdCompetition in ('2000000000','2000001032','17') \
                     AND date(match_date)= (?)",[str_match_date])
     match_list = cur.fetchall()
     cur.close()
@@ -124,8 +125,8 @@ if __name__ == "__main__":
     set_str_match_date = set()
     
     # Define date ranges for processing
-    base_date_diff = -1
-    number_of_days_to_process = 5
+    base_date_diff = 0
+    number_of_days_to_process = 7
     base = datetime.datetime.today()- datetime.timedelta(days=base_date_diff)
     date_list = [base - datetime.timedelta(days=x) for x in range(number_of_days_to_process)]
 

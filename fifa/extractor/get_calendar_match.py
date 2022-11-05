@@ -187,8 +187,8 @@ if __name__ == "__main__":
     output_folder = os.path.join(base_dir,'data')
 
 
-    base_date_diff = -1
-    number_of_days_to_process = 5
+    base_date_diff = 0
+    number_of_days_to_process = 7
     base = datetime.datetime.today()- datetime.timedelta(days=base_date_diff)
     date_list = [base - datetime.timedelta(days=x) for x in range(number_of_days_to_process)]
 

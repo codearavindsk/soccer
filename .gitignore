@@ -167,3 +167,5 @@ venv*/
 */data/
 internalDocumentation/
 db/
+*/dataNormalized/
+*/transformers/
